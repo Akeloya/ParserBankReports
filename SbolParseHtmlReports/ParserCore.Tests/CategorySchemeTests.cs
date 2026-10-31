@@ -9,6 +9,53 @@ namespace ParserCore.Tests
 {
     public class CategorySchemeTests
     {
+        [Fact]
+        public void TitleRulesSplitCategoriesAndOverrideIncorrectBankCategories()
+        {
+            var scheme = new CategoryScheme();
+            var personal = new CategoryMapping { Source = "Перевод СБП", TitleContains = " иван ", Target = "Частным лицам" };
+            scheme.Mappings.Add(personal);
+            scheme.Mappings.Add(new CategoryMapping { Source = "Перевод СБП", TitleContains = "банк", Target = "Между счетами" });
+            scheme.Mappings.Add(new CategoryMapping { TitleContains = "магазин", Target = "Покупки" });
+            scheme.Mappings.Add(new CategoryMapping { Source = "Перевод СБП", Target = "Прочие переводы" });
+            Assert.Equal("Частным лицам", scheme.Map(" перевод сбп ", "ИВАН Петров"));
+            Assert.Equal("Между счетами", scheme.Map("Перевод СБП", "Другой банк"));
+            Assert.Equal("Прочие переводы", scheme.Map("Перевод СБП", "Неизвестный получатель"));
+            Assert.Equal("Прочие переводы", scheme.Map("Перевод СБП", null));
+            Assert.Equal("Покупки", scheme.Map("Ошибочная категория", "Магазин продуктов"));
+            Assert.Equal("Без изменений", scheme.Map("Без изменений", null));
+            Assert.False(personal.Matches("Перевод СБП", "Другой банк"));
+            Assert.False(personal.Matches("Другая категория", "Иван"));
+            scheme.Mappings.Add(new CategoryMapping { TitleContains = "иван", Target = "Общее правило" });
+            Assert.Equal("Частным лицам", scheme.Map("Перевод СБП", "Иван"));
+            scheme.Mappings.Add(new CategoryMapping { Source = "Перевод СБП", TitleContains = "иван", Target = "Новое правило" });
+            Assert.Equal("Новое правило", scheme.Map("Перевод СБП", "Иван"));
+            scheme.Mappings.Add(new CategoryMapping { Source = "Перевод СБП", TitleContains = "иван", Target = " " });
+            var operation = new CardOperation { Category = "Перевод СБП", Title = "Иван" };
+            operation.ApplyCategoryScheme(scheme);
+            Assert.Equal("Новое правило", operation.Category);
+            operation.ApplyCategoryScheme(null);
+            Assert.Equal("Перевод СБП", operation.Category);
+        }
+
+        [Fact]
+        public void TitleConditionsSurviveSettingsRoundTrip()
+        {
+            var path = Path.GetTempFileName();
+            try
+            {
+                var settings = DataSet.LoadDefault();
+                var scheme = new CategoryScheme { Name = "Правила" };
+                scheme.Mappings.Add(new CategoryMapping { TitleContains = "магазин", Target = "Покупки" });
+                settings.CategorySchemes.Add(scheme);
+                settings.Save(path);
+                var loaded = DataSet.LoadSettings(path).CategorySchemes.Single();
+                Assert.Equal("магазин", loaded.Mappings.Single().TitleContains);
+                Assert.Equal("Покупки", loaded.Map("Прочее", "МАГАЗИН"));
+            }
+            finally { File.Delete(path); }
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]

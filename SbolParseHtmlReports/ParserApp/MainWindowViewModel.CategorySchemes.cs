@@ -37,9 +37,28 @@ namespace ParserApp
         public IEnumerable<CardOperation> VisibleOperations => Operations == null
             ? Enumerable.Empty<CardOperation>()
             : Operations.Where(operation => SelectedCategoryMapping == null ||
-                SelectedCategoryMapping.Matches(operation.OriginalCategory ?? operation.Category));
+                SelectedCategoryMapping.Matches(operation.OriginalCategory ?? operation.Category, operation.Title));
 
         public void ClearCategoryFilter() => SelectedCategoryMapping = null;
+
+        public async Task<CategoryMapping> AddCategoryMappingForOperation(CardOperation operation)
+        {
+            if (operation == null)
+                return null;
+            if (!HasCategoryScheme)
+                await AddCategoryScheme();
+            if (!HasCategoryScheme)
+                return null;
+
+            var mapping = new CategoryMapping
+            {
+                Source = operation.OriginalCategory ?? operation.Category,
+                TitleContains = operation.Title
+            };
+            SelectedCategoryScheme.Mappings.Add(mapping);
+            SelectedCategoryMapping = mapping;
+            return mapping;
+        }
 
         public BindableCollection<CategoryScheme> CategorySchemes { get; } = new BindableCollection<CategoryScheme>();
         public CategoryScheme SelectedCategoryScheme

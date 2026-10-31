@@ -70,22 +70,29 @@
                           ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Категория файла" Width="*" Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}" />
+                        <DataGridTextColumn Header="Название содержит" Width="*" Binding="{Binding TitleContains, UpdateSourceTrigger=PropertyChanged}" />
                         <DataGridTextColumn Header="Категория 1С" Width="*" Binding="{Binding Target, UpdateSourceTrigger=PropertyChanged}" />
                     </DataGrid.Columns>
                 </DataGrid>
-                <TextBlock Text="Заполните категорию 1С — изменения сохраняются автоматически. Новое соответствие: пустая строка внизу."
+                <TextBlock Text="Название содержит — поиск без учёта регистра. Пустое название — вся категория; пустая категория файла — поиск по названию во всех категориях. Правила с названием приоритетнее обычных; среди них правило с категорией приоритетнее общего. При равном приоритете применяется последняя строка. Изменения сохраняются автоматически; новая строка — внизу."
                            FontSize="11" TextWrapping="Wrap" Margin="0,4,0,4" />
                 <CheckBox Content="Показать исходные категории" IsChecked="{Binding ShowOriginalCategories}" />
                 <TextBlock Text="Клик по соответствию — фильтр операций; правая кнопка — показать все."
+                           FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="В таблице операций: двойной клик — копировать ячейку; правая кнопка по строке — добавить отдельное соответствие, сохранив общее."
                            FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
                 <TextBlock Text="{Binding SchemeError}" TextWrapping="Wrap" Foreground="Firebrick" Margin="0,4,0,0" />
             </StackPanel>
         </Grid>
         <DataGrid
             Grid.Row="2"
+            IsReadOnly="True"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
             AutoGenerateColumns="False"
             ItemsSource="{Binding VisibleOperations}"
-            PreviewMouseRightButtonDown="ClearCategoryFilter_OnRightClick">
+            PreviewMouseLeftButtonDown="Operations_OnLeftButtonDown"
+            PreviewMouseRightButtonDown="Operations_OnRightButtonDown">
             <DataGrid.Columns>
                 <DataGridCheckBoxColumn />
                 <DataGridTextColumn Binding="{Binding Date, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" Header="Дата" />

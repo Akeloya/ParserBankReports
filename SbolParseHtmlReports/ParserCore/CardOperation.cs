@@ -21,7 +21,7 @@ namespace ParserCore
         public void ApplyCategoryScheme(CategoryScheme scheme, bool showOriginal = false)
         {
             OriginalCategory ??= Category;
-            Category = scheme?.Map(OriginalCategory) ?? OriginalCategory;
+            Category = scheme?.Map(OriginalCategory, Title) ?? OriginalCategory;
             _showOriginalCategory = showOriginal;
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Category)));
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DisplayCategory)));
