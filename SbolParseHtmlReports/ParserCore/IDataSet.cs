@@ -5,6 +5,8 @@ namespace ParserCore
     public interface IDataSet
     {
         int EncodingPage { get; set; }
+        System.Collections.Generic.List<CategoryScheme> CategorySchemes { get; set; }
+        string SelectedCategoryScheme { get; set; }
         string DataXPath { get; set; }
         string RestXPath { get; set; }
         string RootTableXpath { get; set; }

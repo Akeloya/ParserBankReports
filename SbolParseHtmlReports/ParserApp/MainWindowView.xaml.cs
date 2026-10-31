@@ -24,5 +24,15 @@ namespace ParserApp
         {
             InitializeComponent();
         }
+
+        private void ClearCategoryFilter_OnRightClick(object sender, MouseButtonEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.ClearCategoryFilter();
+                CategoryMappingsGrid.UnselectAll();
+                e.Handled = true;
+            }
+        }
     }
 }

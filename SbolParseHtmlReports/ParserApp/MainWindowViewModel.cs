@@ -5,6 +5,7 @@ using ParserApp.Services;
 
 using ParserCore;
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -21,7 +22,7 @@ using Parser = ParserCore.Parser;
 
 namespace ParserApp
 {
-    public class MainWindowViewModel : Screen
+    public partial class MainWindowViewModel : Screen
     {
         private Parser _parser;
         private readonly IDialogService _dialogService;
@@ -29,8 +30,19 @@ namespace ParserApp
         {
             _dialogService = dialogService;
             DisplayName = Properties.Resources.MainWindowTitle;
+            LoadCategorySchemes();
         }
         public BindableCollection<CardOperation> Operations { get; set; }
+        public string IncomeSummary => BuildSummary("Пополнение", _parser?.ReportIncome,
+            Operations?.Where(operation => operation.Summ > 0).Sum(operation => operation.Summ) ?? 0);
+        public string ExpenseSummary => BuildSummary("Списание", _parser?.ReportExpense,
+            -(Operations?.Where(operation => operation.Summ < 0).Sum(operation => operation.Summ) ?? 0));
+
+        private static string BuildSummary(string name, decimal? reportTotal, decimal parsedTotal)
+        {
+            var report = reportTotal.HasValue ? reportTotal.Value.ToString("N2") + " ₽" : "нет данных";
+            return $"{name}: в отчёте — {report}; по операциям — {parsedTotal:N2} ₽";
+        }
 
         public Task CloseAsync()
         {
@@ -58,12 +70,27 @@ namespace ParserApp
 
             await _dialogService.OpenFileDialog("Выберите отчёт", "Отчеты СБОЛ", "*.html;*.pdf", async (fileName) =>
             {
-                var vm = new EnterCardNameViewModel();
-                await _dialogService.ShowAsync(vm);
-                _parser = Parser.Get(fileName, App.GetSettingsPath(), ';');
-                _parser.RunParse(vm.CardName);
-                Operations = new BindableCollection<CardOperation>(_parser.Operations);
+                try
+                {
+                    var vm = new EnterCardNameViewModel();
+                    await _dialogService.ShowAsync(vm);
+                    if (!vm.IsAccepted)
+                        return;
+                    var parser = Parser.Get(fileName, App.GetSettingsPath(), ';');
+                    parser.RunParse(vm.CardName);
+                    _parser = parser;
+                    Operations = new BindableCollection<CardOperation>(parser.Operations);
+                    ClearCategoryFilter();
+                    PopulateCategoryMappings();
+                    ApplyCategoryScheme();
+                }
+                catch(Exception ex)
+                {
+                    await _dialogService.ShowErrorAsync(ex);
+                }
                 NotifyOfPropertyChange(nameof(Operations));
+                NotifyOfPropertyChange(nameof(IncomeSummary));
+                NotifyOfPropertyChange(nameof(ExpenseSummary));
             });
         }
 
@@ -72,12 +99,20 @@ namespace ParserApp
             return _dialogService.ShowPupupAsync("Не реализованно!");
         }
         public bool CanSave_CanExecute => _parser != null && _parser.Operations.Any();
+        public string[] ExportEncodings { get; } = new[] { "Windows-1251", "UTF-8" };
+        public string SelectedExportEncoding { get; set; } = "Windows-1251";
         public Task SaveAsync()
         {
             return _dialogService.OpenFileDialog(null, "(CSV)", "*.csv", (fileName) =>
             {
-                var filePath = Path.Combine(fileName, "result.csv");
-                return _parser.SaveAsync(filePath);
+                var filePath = fileName;
+                if (!filePath.EndsWith(".csv", System.StringComparison.InvariantCultureIgnoreCase))
+                    filePath += ".csv";
+                var encoding = SelectedExportEncoding == "UTF-8"
+                    ? new UTF8Encoding(true)
+                    : Encoding.GetEncoding(1251);
+                ApplyCategoryScheme();
+                return _parser.SaveAsync(filePath, encoding);
             });
         }
 

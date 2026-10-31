@@ -40,6 +40,13 @@ namespace ParserApp.Controls
 
         public Task SaveAsync()
         {
+            // Schemes may have changed in the main window since this editor was opened.
+            if (File.Exists(_settingsPath))
+            {
+                var current = DataSet.LoadSettings(_settingsPath);
+                Data.CategorySchemes = current.CategorySchemes;
+                Data.SelectedCategoryScheme = current.SelectedCategoryScheme;
+            }
             return Data.SaveAsync(_settingsPath);
         }
     }

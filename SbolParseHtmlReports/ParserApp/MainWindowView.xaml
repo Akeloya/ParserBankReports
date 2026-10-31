@@ -17,7 +17,8 @@
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="20" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Menu>
@@ -37,20 +38,75 @@
                 <MenuItem cm:Message.Attach="AboutAsync" Header="{x:Static res:Resources.MenuItemAbout}" />
             </MenuItem>
         </Menu>
+        <Grid Grid.Row="1" Margin="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Margin="0,0,16,0">
+                <TextBlock Text="{Binding IncomeSummary}" TextWrapping="Wrap" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding ExpenseSummary}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                <WrapPanel>
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" Text="Кодировка CSV при сохранении:" />
+                    <ComboBox Width="140"
+                              ItemsSource="{Binding ExportEncodings}"
+                              SelectedItem="{Binding SelectedExportEncoding, Mode=TwoWay}" />
+                </WrapPanel>
+            </StackPanel>
+            <StackPanel Grid.Column="1">
+                <TextBlock Text="Соответствие категорий файла и 1С" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <DockPanel Margin="0,0,0,5">
+                    <Button DockPanel.Dock="Right" Content="+" Width="28" Margin="5,0,0,0"
+                            ToolTip="Добавить схему" cm:Message.Attach="AddCategoryScheme" />
+                    <ComboBox ItemsSource="{Binding CategorySchemes}" DisplayMemberPath="Name"
+                              SelectedItem="{Binding SelectedCategoryScheme, Mode=TwoWay}" />
+                </DockPanel>
+                <DataGrid x:Name="CategoryMappingsGrid" Height="150" AutoGenerateColumns="False"
+                          SelectedItem="{Binding SelectedCategoryMapping, Mode=TwoWay}"
+                          SelectionMode="Single" SelectionUnit="FullRow"
+                          PreviewMouseRightButtonDown="ClearCategoryFilter_OnRightClick"
+                          ItemsSource="{Binding SelectedCategoryScheme.Mappings}" IsEnabled="{Binding HasCategoryScheme}"
+                          CanUserAddRows="True" CanUserDeleteRows="True" CanUserSortColumns="False"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Категория файла" Width="*" Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}" />
+                        <DataGridTextColumn Header="Категория 1С" Width="*" Binding="{Binding Target, UpdateSourceTrigger=PropertyChanged}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock Text="Заполните категорию 1С — изменения сохраняются автоматически. Новое соответствие: пустая строка внизу."
+                           FontSize="11" TextWrapping="Wrap" Margin="0,4,0,4" />
+                <CheckBox Content="Показать исходные категории" IsChecked="{Binding ShowOriginalCategories}" />
+                <TextBlock Text="Клик по соответствию — фильтр операций; правая кнопка — показать все."
+                           FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="{Binding SchemeError}" TextWrapping="Wrap" Foreground="Firebrick" Margin="0,4,0,0" />
+            </StackPanel>
+        </Grid>
         <DataGrid
-            Grid.Row="1"
+            Grid.Row="2"
             AutoGenerateColumns="False"
-            ItemsSource="{Binding Operations}">
+            ItemsSource="{Binding VisibleOperations}"
+            PreviewMouseRightButtonDown="ClearCategoryFilter_OnRightClick">
             <DataGrid.Columns>
                 <DataGridCheckBoxColumn />
                 <DataGridTextColumn Binding="{Binding Date, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" Header="Дата" />
                 <DataGridTextColumn Binding="{Binding Date, StringFormat='{}{0:dd.MM.yyyyHH:mm}'}" Header="Дата для 1C" />
-                <DataGridTextColumn Binding="{Binding Category}" Header="Категория" />
+                <DataGridTextColumn Binding="{Binding DisplayCategory}" Header="Категория" IsReadOnly="True">
+                    <DataGridTextColumn.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCategoryMapped}" Value="True">
+                                    <Setter Property="Background" Value="#FFFFE082" />
+                                    <Setter Property="Foreground" Value="Black" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGridTextColumn.CellStyle>
+                </DataGridTextColumn>
                 <DataGridTextColumn Binding="{Binding Title}" Header="Название" />
                 <DataGridTextColumn Binding="{Binding Summ}" Header="Сумма" />
                 <DataGridTextColumn Binding="{Binding BalanceAfter}" Header="Остаток" />
                 <DataGridTextColumn Binding="{Binding Location}" Header="Место" />
-                <DataGridTextColumn Binding="{Binding ProcessDate, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Header="Проведено" />
+                <DataGridTextColumn Binding="{Binding ProcessDate, StringFormat='{}{0:dd.MM.yyyy}'}" Header="Проведено" />
                 <DataGridTextColumn Binding="{Binding CardName}" Header="Карта" />
             </DataGrid.Columns>
             <DataGrid.RowStyle>

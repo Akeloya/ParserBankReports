@@ -7,7 +7,7 @@
     xmlns:local="clr-namespace:ParserApp.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:prop="clr-namespace:ParserApp.Properties"
-    Width="200"
+    Width="360"
     d:DataContext="{d:DesignInstance local:EnterCardNameViewModel}"
     d:DesignHeight="450"
     mc:Ignorable="d">
@@ -18,10 +18,13 @@
     </UserControl.Resources>
     <StackPanel>
         <TextBlock Margin="5" Text="Карта отчета" />
-        <TextBox
+        <ComboBox
             Name="TbCardName"
             Margin="5"
-            Text="{Binding CardName, UpdateSourceTrigger=PropertyChanged}" />
+            IsEditable="True"
+            ItemsSource="{Binding CardNames}"
+            Text="{Binding CardName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock Margin="5" Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="Firebrick" />
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
             <Button cal:Message.Attach="Apply" Content="{x:Static prop:Resources.Apply}" />
             <Button cal:Message.Attach="cancel" Content="{x:Static prop:Resources.Cancel}" />

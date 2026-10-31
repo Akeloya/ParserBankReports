@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ParserCore\ParserCore.csproj" />
+    <None Include="..\ParserApp\Files\4215.pdf" Link="Files\4215.pdf" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\ParserApp\Files\4215.pdf')" />
   </ItemGroup>
 
 </Project>

@@ -9,6 +9,8 @@ namespace ParserCore
     public class DataSet : IDataSet
     {
         public int EncodingPage { get; set; }
+        public System.Collections.Generic.List<CategoryScheme> CategorySchemes { get; set; } = new System.Collections.Generic.List<CategoryScheme>();
+        public string SelectedCategoryScheme { get; set; }
         public string DataXPath { get; set; }
         public string RestXPath { get; set; }
         public string RootTableXpath { get; set; }
@@ -54,9 +56,12 @@ namespace ParserCore
         public void Save(string jsonPath)
         {
             var json = JsonConvert.SerializeObject(this);
+            var temporaryPath = jsonPath + ".tmp";
+            File.WriteAllText(temporaryPath, json);
             if (File.Exists(jsonPath))
-                File.Delete(jsonPath);
-            File.WriteAllText(jsonPath, json);
+                File.Replace(temporaryPath, jsonPath, null);
+            else
+                File.Move(temporaryPath, jsonPath);
         }
 
         public Task SaveAsync(string jsonPath)

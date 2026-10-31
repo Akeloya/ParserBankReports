@@ -1,128 +1,113 @@
-﻿using iText.Kernel.Geom;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
-using iText.Kernel.Pdf.Canvas.Parser.Filter;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
-using iText.Layout;
-
 using System;
-using System.IO;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace ParserCore
 {
     internal class PdfParser : Parser
     {
-        internal PdfParser(string path, string settingsPath, char delimeter) : base(path, settingsPath, delimeter)
-        {
+        private const string Money = @"[+\-]?(?:\d{1,3}(?: \d{3})+|\d+),\d{2}";
+        private static readonly Regex OperationLine = new Regex(
+            @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2})\s+(?<category>.+?)\s+(?<amount>" + Money + @")\s+(?<balance>" + Money + @")$",
+            RegexOptions.Compiled);
+        private static readonly Regex ProcessingLine = new Regex(
+            @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<code>\d+)\s+(?<description>.+)$",
+            RegexOptions.Compiled);
 
-        }
-
-        internal PdfParser(string path, IDataSet ds, char delimeter) : base(path, ds, delimeter)
-        {
-
-        }
+        internal PdfParser(string path, string settingsPath, char delimeter) : base(path, settingsPath, delimeter) { }
+        internal PdfParser(string path, IDataSet ds, char delimeter) : base(path, ds, delimeter) { }
 
         public override void RunParse(string cardName = null)
         {
             _operations.Clear();
-            using var pdfReader = new PdfReader(_path);
-            using PdfDocument d = new(pdfReader);
-            using var doc = new Document(d);
+            ReportIncome = null;
+            ReportExpense = null;
+            using var reader = new PdfReader(_path);
+            using var document = new PdfDocument(reader);
+            CardOperation current = null;
+            string description = null;
 
-            Rectangle rect = new(0, 0, 1000, 1000);
-
-            var fontFilter = new TextRegionEventFilter(rect);
-
-            var tempFile = System.IO.Path.GetTempFileName();
-
-            var pages = d.GetPageLabels();
-            for (var i = 1; i <= d.GetNumberOfPages(); i++)
+            for (var pageNumber = 1; pageNumber <= document.GetNumberOfPages(); pageNumber++)
             {
-                FilteredEventListener listener = new();
-                LocationTextExtractionStrategy extractionStrategy = listener
-                    .AttachEventListener(new LocationTextExtractionStrategy(), fontFilter);
-                PdfCanvasProcessor parser = new(listener);
-                var page = d.GetPage(i);
-                parser.ProcessPageContent(page);
-                string actualText = extractionStrategy.GetResultantText();
-                File.AppendAllText(tempFile, actualText);
-            }
-            doc.Close();
-
-            var allLines = File.ReadAllLines(tempFile);
-
-            for (var lineNumber = 0; lineNumber < allLines.Length; lineNumber++)
-            {
-                var workingLine = allLines[lineNumber].Replace(((char)160).ToString(), "");
-
-                var parts = workingLine.Split([" "], StringSplitOptions.RemoveEmptyEntries);
-
-                if (parts.Length < 5)
-                    continue;
-
-                if (!double.TryParse(parts[parts.Length - 2], out var amount))
-                    continue;
-
-                var debt = 0d;
-                var credit = 0d;
-                if (!parts[parts.Length - 2].StartsWith("+"))
+                var text = PdfTextExtractor.GetTextFromPage(document.GetPage(pageNumber), new LocationTextExtractionStrategy())
+                    .Replace('\u00a0', ' ').Replace('\u202f', ' ');
+                ReadTotals(text);
+                foreach (var rawLine in text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                 {
-                    credit = amount;
-                    amount *= -1;
-                }
-                else
-                    debt = amount;
-
-
-                if (!double.TryParse(parts[parts.Length - 1], out var rest))
-                    continue;
-
-                if (!(DateTime.TryParse(parts[0], out var date) && TimeSpan.TryParse(parts[1], out var time)))
-                {
-                    continue;
-                }
-
-                var operationDate = date + time;
-                var destination = parts[3];
-                for (var i = 4; i < parts.Length - 2; i++)
-                {
-                    destination += " " + parts[i];
-                }
-
-                decimal balanceAfter = 0;
-                if (parts.Length >= 5 && decimal.TryParse(parts[5], out var balanceAfterParsed))
-                {
-                    balanceAfter = balanceAfterParsed;
-                }
-                var resultCard = cardName;
-                if (destination.Contains("Перевод", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    var notParsedDest = allLines[lineNumber + 1].Replace(((char)160).ToString(), "");
-                    var notParsedSplit = notParsedDest.Split([" "], StringSplitOptions.RemoveEmptyEntries);
-                    for (var i = 0; i < notParsedSplit.Length; i++)
+                    var line = Regex.Replace(rawLine.Trim(), @"\s+", " ");
+                    var match = OperationLine.Match(line);
+                    if (match.Success)
                     {
-                        if (string.IsNullOrWhiteSpace(notParsedSplit[i]))
-                            continue;
-                        if (notParsedSplit[i].Contains("карту", StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrWhiteSpace(notParsedSplit[i + 1]))
-                            resultCard = notParsedSplit[i + 1];
-                        else if (notParsedSplit[i].Contains("карты", StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrWhiteSpace(notParsedSplit[i + 1]))
-                            resultCard = notParsedSplit[i + 1];
+                        CompleteDescription(current, description);
+                        var amountText = match.Groups["amount"].Value;
+                        var amount = ParseMoney(amountText);
+                        current = new CardOperation
+                        {
+                            RowNumber = _operations.Count + 1,
+                            Date = DateTime.ParseExact(match.Groups["date"].Value + " " + match.Groups["time"].Value,
+                                "dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture),
+                            Category = match.Groups["category"].Value,
+                            Summ = amountText.StartsWith("+") ? amount : -Math.Abs(amount),
+                            BalanceAfter = ParseMoney(match.Groups["balance"].Value),
+                            CardName = cardName
+                        };
+                        _operations.Add(current);
+                        description = null;
+                        continue;
+                    }
+
+                    if (current == null)
+                        continue;
+                    var processing = ProcessingLine.Match(line);
+                    if (processing.Success)
+                    {
+                        current.ProcessDate = DateTime.ParseExact(processing.Groups["date"].Value,
+                            "dd.MM.yyyy", CultureInfo.InvariantCulture);
+                        description = processing.Groups["description"].Value;
+                    }
+                    else if (description != null)
+                    {
+                        // Page headers and footers are outside the operation description.
+                        if (line.StartsWith("Продолжение") || line.StartsWith("Дата формирования") || line == "*")
+                        {
+                            CompleteDescription(current, description);
+                            description = null;
+                        }
+                        else
+                            description += " " + line;
                     }
                 }
-                                
-                var operation = new CardOperation()
-                {
-                    Date = operationDate,
-                    Summ = (decimal)amount,
-                    RowNumber = lineNumber + 1,
-                    Category = destination,
-                    BalanceAfter = balanceAfter,
-                    CardName = resultCard
-                };
-                _operations.Add(operation);
-                ///"ДАТА\tОперация\tСумма\tОстаток\tКарта\tСчёт\tПриход\tРасход"
-                //$"{operationDate}\t{destination}\t{amount}\t{rest}\t{destCard ?? sourceCard}\t{card}\t{debt}\t{credit}";
+                CompleteDescription(current, description);
+                description = null;
             }
+        }
+
+        private void ReadTotals(string text)
+        {
+            var income = Regex.Match(text, @"Пополнение\s+(?<value>" + Money + ")");
+            var expense = Regex.Match(text, @"Списание\s+(?<value>" + Money + ")");
+            if (income.Success)
+                ReportIncome = ParseMoney(income.Groups["value"].Value);
+            if (expense.Success)
+                ReportExpense = ParseMoney(expense.Groups["value"].Value);
+        }
+
+        private static decimal ParseMoney(string text)
+        {
+            return decimal.Parse(text.Replace(" ", "").Replace(',', '.'),
+                NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+        }
+
+        private static void CompleteDescription(CardOperation operation, string description)
+        {
+            if (operation == null || description == null)
+                return;
+            var suffix = Regex.Match(description, @"\.?\s*Операция\s+по\s+(?:карте|сч[её]ту)\b");
+            operation.Title = suffix.Success ? description.Substring(0, suffix.Index).Trim() : description.Trim();
+            operation.Location = operation.Title;
         }
     }
 }
