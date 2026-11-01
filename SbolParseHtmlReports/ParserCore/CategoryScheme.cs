@@ -23,6 +23,12 @@ namespace ParserCore
 
     public class CategoryMapping : INotifyPropertyChanged
     {
+        private bool _addToScheme;
+        public bool AddToScheme
+        {
+            get => _addToScheme;
+            set { _addToScheme = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AddToScheme))); }
+        }
         private string _source;
         private string _target;
         private string _titleContains;

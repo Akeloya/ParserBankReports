@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="ParserApp.MainWindowView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -11,6 +11,7 @@
     d:DataContext="{d:DesignInstance local:MainWindowViewModel}"
     d:DesignHeight="450"
     d:DesignWidth="800"
+    PreviewKeyDown="View_OnPreviewKeyDown"
     mc:Ignorable="d">
     <UserControl.Resources>
         <cnv:NumberSignConverter x:Key="SignConverter" />
@@ -24,6 +25,26 @@
         <Menu>
             <MenuItem Header="{x:Static res:Resources.MenuItemFile}">
                 <MenuItem cm:Message.Attach="OpenHtmlFileAsync" Header="{x:Static res:Resources.MenuItemOpenHtmlFile}" />
+                <MenuItem Header="Последние отчёты" ItemsSource="{Binding RecentReports}">
+                    <MenuItem.ItemContainerStyle>
+                        <Style TargetType="MenuItem">
+                            <Setter Property="Header" Value="{Binding}" />
+                            <EventSetter Event="Click" Handler="RecentReport_OnClick" />
+                        </Style>
+                    </MenuItem.ItemContainerStyle>
+                </MenuItem>
+                <Separator />
+                <MenuItem cm:Message.Attach="OpenProjectAsync" Header="Открыть проект…" />
+                <MenuItem cm:Message.Attach="SaveProjectAsync" Header="Сохранить проект…" />
+                <MenuItem Header="Последние проекты обработки" ItemsSource="{Binding RecentProjects}">
+                    <MenuItem.ItemContainerStyle>
+                        <Style TargetType="MenuItem">
+                            <Setter Property="Header" Value="{Binding}" />
+                            <EventSetter Event="Click" Handler="RecentProject_OnClick" />
+                        </Style>
+                    </MenuItem.ItemContainerStyle>
+                </MenuItem>
+                <Separator />
                 <MenuItem cm:Message.Attach="OpenCsvFileAsync" Header="{x:Static res:Resources.MenuItemOpenCsvFile}" />
                 <MenuItem cm:Message.Attach="PrintAsync" Header="Печать" />
                 <MenuItem cm:Message.Attach="SaveAsync" Header="{x:Static res:Resources.MenuItemSave}" />
@@ -44,66 +65,150 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <StackPanel Margin="0,0,16,0">
-                <TextBlock Text="{Binding IncomeSummary}" TextWrapping="Wrap" Margin="0,0,0,4" />
-                <TextBlock Text="{Binding ExpenseSummary}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                <TextBlock
+                    Margin="0,0,0,4"
+                    Text="{Binding IncomeSummary}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="0,0,0,8"
+                    Text="{Binding ExpenseSummary}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="0,0,0,6"
+                    FontSize="11"
+                    Text="F3 — перейти к соответствию."
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="0,0,0,6"
+                    FontSize="11"
+                    Text="F6 — очистить все временные категории."
+                    TextWrapping="Wrap" />
                 <WrapPanel>
-                    <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" Text="Кодировка CSV при сохранении:" />
-                    <ComboBox Width="140"
-                              ItemsSource="{Binding ExportEncodings}"
-                              SelectedItem="{Binding SelectedExportEncoding, Mode=TwoWay}" />
+                    <TextBlock
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Text="Кодировка CSV при сохранении:" />
+                    <ComboBox
+                        Width="140"
+                        ItemsSource="{Binding ExportEncodings}"
+                        SelectedItem="{Binding SelectedExportEncoding, Mode=TwoWay}" />
                 </WrapPanel>
             </StackPanel>
             <StackPanel Grid.Column="1">
-                <TextBlock Text="Соответствие категорий файла и 1С" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock
+                    Margin="0,0,0,4"
+                    FontWeight="SemiBold"
+                    Text="Соответствие категорий файла и 1С" />
                 <DockPanel Margin="0,0,0,5">
-                    <Button DockPanel.Dock="Right" Content="+" Width="28" Margin="5,0,0,0"
-                            ToolTip="Добавить схему" cm:Message.Attach="AddCategoryScheme" />
-                    <ComboBox ItemsSource="{Binding CategorySchemes}" DisplayMemberPath="Name"
-                              SelectedItem="{Binding SelectedCategoryScheme, Mode=TwoWay}" />
+                    <Button
+                        Width="28"
+                        Margin="5,0,0,0"
+                        cm:Message.Attach="AddCategoryScheme"
+                        Content="+"
+                        DockPanel.Dock="Right"
+                        ToolTip="Добавить схему" />
+                    <ComboBox
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding CategorySchemes}"
+                        SelectedItem="{Binding SelectedCategoryScheme, Mode=TwoWay}" />
                 </DockPanel>
-                <DataGrid x:Name="CategoryMappingsGrid" Height="150" AutoGenerateColumns="False"
-                          SelectedItem="{Binding SelectedCategoryMapping, Mode=TwoWay}"
-                          SelectionMode="Single" SelectionUnit="FullRow"
-                          PreviewMouseRightButtonDown="ClearCategoryFilter_OnRightClick"
-                          ItemsSource="{Binding SelectedCategoryScheme.Mappings}" IsEnabled="{Binding HasCategoryScheme}"
-                          CanUserAddRows="True" CanUserDeleteRows="True" CanUserSortColumns="False"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                <DataGrid
+                    x:Name="CategoryMappingsGrid"
+                    Height="150"
+                    AutoGenerateColumns="False"
+                    CanUserAddRows="True"
+                    CanUserDeleteRows="True"
+                    CanUserSortColumns="True"
+                    IsEnabled="{Binding HasCategoryScheme}"
+                    ItemsSource="{Binding SelectedCategoryScheme.Mappings}"
+                    PreviewMouseRightButtonDown="CategoryMappings_OnRightButtonDown"
+                    ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    SelectedItem="{Binding SelectedCategoryMapping, Mode=TwoWay}"
+                    SelectionMode="Single"
+                    SelectionUnit="FullRow">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Категория файла" Width="*" Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}" />
-                        <DataGridTextColumn Header="Название содержит" Width="*" Binding="{Binding TitleContains, UpdateSourceTrigger=PropertyChanged}" />
-                        <DataGridTextColumn Header="Категория 1С" Width="*" Binding="{Binding Target, UpdateSourceTrigger=PropertyChanged}" />
+                        <DataGridTemplateColumn
+                            Width="34"
+                            CanUserResize="False"
+                            Header="">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button
+                                        Width="16"
+                                        Height="16"
+                                        Padding="0"
+                                        BorderThickness="0"
+                                        Click="DeleteCategoryMapping_OnClick"
+                                        Content="-"
+                                        Focusable="False"
+                                        ToolTip="Удалить соответствие">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNewItem, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn
+                            Width="*"
+                            Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}"
+                            Header="Категория файла" />
+                        <DataGridTextColumn
+                            Width="*"
+                            Binding="{Binding TitleContains, UpdateSourceTrigger=PropertyChanged}"
+                            Header="Название содержит" />
+                        <DataGridTextColumn
+                            Width="*"
+                            Binding="{Binding Target, UpdateSourceTrigger=PropertyChanged}"
+                            Header="Категория 1С" />
                     </DataGrid.Columns>
                 </DataGrid>
-                <TextBlock Text="Название содержит — поиск без учёта регистра. Пустое название — вся категория; пустая категория файла — поиск по названию во всех категориях. Правила с названием приоритетнее обычных; среди них правило с категорией приоритетнее общего. При равном приоритете применяется последняя строка. Изменения сохраняются автоматически; новая строка — внизу."
-                           FontSize="11" TextWrapping="Wrap" Margin="0,4,0,4" />
                 <CheckBox Content="Показать исходные категории" IsChecked="{Binding ShowOriginalCategories}" />
-                <TextBlock Text="Клик по соответствию — фильтр операций; правая кнопка — показать все."
-                           FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
-                <TextBlock Text="В таблице операций: двойной клик — копировать ячейку; правая кнопка по строке — добавить отдельное соответствие, сохранив общее."
-                           FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
-                <TextBlock Text="{Binding SchemeError}" TextWrapping="Wrap" Foreground="Firebrick" Margin="0,4,0,0" />
+                <TextBlock
+                    Margin="0,4,0,0"
+                    Foreground="Firebrick"
+                    Text="{Binding SchemeError}"
+                    TextWrapping="Wrap" />
             </StackPanel>
         </Grid>
         <DataGrid
+            x:Name="OperationsGrid"
             Grid.Row="2"
-            IsReadOnly="True"
+            AutoGenerateColumns="False"
             CanUserAddRows="False"
             CanUserDeleteRows="False"
-            AutoGenerateColumns="False"
+            CanUserSortColumns="True"
+            IsReadOnly="True"
             ItemsSource="{Binding VisibleOperations}"
+            PreviewKeyDown="Operations_OnPreviewKeyDown"
             PreviewMouseLeftButtonDown="Operations_OnLeftButtonDown"
             PreviewMouseRightButtonDown="Operations_OnRightButtonDown">
             <DataGrid.Columns>
-                <DataGridCheckBoxColumn />
+                <DataGridCheckBoxColumn CanUserSort="False" />
                 <DataGridTextColumn Binding="{Binding Date, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" Header="Дата" />
                 <DataGridTextColumn Binding="{Binding Date, StringFormat='{}{0:dd.MM.yyyyHH:mm}'}" Header="Дата для 1C" />
-                <DataGridTextColumn Binding="{Binding DisplayCategory}" Header="Категория" IsReadOnly="True">
+                <DataGridTextColumn
+                    Binding="{Binding DisplayCategory}"
+                    Header="Категория"
+                    IsReadOnly="True">
                     <DataGridTextColumn.CellStyle>
                         <Style TargetType="DataGridCell">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsCategoryMapped}" Value="True">
                                     <Setter Property="Background" Value="#FFFFE082" />
                                     <Setter Property="Foreground" Value="Black" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding HasTemporaryCategory}" Value="True">
+                                    <Setter Property="Background" Value="#FFE1BEE7" />
+                                    <Setter Property="Foreground" Value="#FF4A148C" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>

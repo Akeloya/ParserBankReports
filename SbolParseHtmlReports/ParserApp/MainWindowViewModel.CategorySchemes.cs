@@ -14,6 +14,53 @@ namespace ParserApp
 {
     public partial class MainWindowViewModel
     {
+        public System.Collections.ObjectModel.ObservableCollection<CategoryMapping> ProjectMappings { get; } = new System.Collections.ObjectModel.ObservableCollection<CategoryMapping>();
+        private readonly Dictionary<CategoryMapping, CategoryMapping> _sharedMappings = new Dictionary<CategoryMapping, CategoryMapping>();
+
+        private void ResetProjectMappings(IEnumerable<CategoryMapping> saved = null)
+        {
+            var wasLoading = _loadingSchemes;
+            _loadingSchemes = true;
+            ProjectMappings.Clear();
+            _sharedMappings.Clear();
+            foreach (var item in saved ?? SelectedCategoryScheme?.Mappings ?? Enumerable.Empty<CategoryMapping>())
+            {
+                var copy = new CategoryMapping { Source = item.Source, Target = item.Target, TitleContains = item.TitleContains,
+                    AddToScheme = saved == null || item.AddToScheme };
+                ProjectMappings.Add(copy);
+                if (copy.AddToScheme && HasCategoryScheme)
+                {
+                    var shared = SelectedCategoryScheme.Mappings.FirstOrDefault(m => m.Source == copy.Source && m.TitleContains == copy.TitleContains && m.Target == copy.Target);
+                    if (shared != null) _sharedMappings[copy] = shared;
+                }
+            }
+            _loadingSchemes = wasLoading;
+            ObserveMappings();
+            ClearCategoryFilter();
+            ApplyCategoryScheme();
+        }
+
+        private void SyncSharedMapping(CategoryMapping mapping)
+        {
+            if (_loadingSchemes || !HasCategoryScheme) return;
+            if (!mapping.AddToScheme)
+            {
+                // Unchecking keeps the edited rule local; existing shared rules remain available to other projects.
+
+                return;
+            }
+            if (!_sharedMappings.TryGetValue(mapping, out var shared))
+            {
+                shared = new CategoryMapping();
+                _sharedMappings[mapping] = shared;
+                SelectedCategoryScheme.Mappings.Add(shared);
+            }
+            shared.Source = mapping.Source;
+            shared.TitleContains = mapping.TitleContains;
+            shared.Target = mapping.Target;
+            SaveCategorySchemes();
+        }
+
         private readonly CategoryScheme _noScheme = new CategoryScheme { Name = "Без схемы" };
         private readonly HashSet<CategoryMapping> _observedMappings = new HashSet<CategoryMapping>();
         private CategoryScheme _selectedCategoryScheme;
@@ -30,34 +77,104 @@ namespace ParserApp
             {
                 _selectedCategoryMapping = value;
                 NotifyOfPropertyChange();
-                NotifyOfPropertyChange(nameof(VisibleOperations));
+                RefreshOperationsView();
+                NotifyOfPropertyChange(nameof(CategoryFilterStatus));
             }
         }
 
-        public IEnumerable<CardOperation> VisibleOperations => Operations == null
-            ? Enumerable.Empty<CardOperation>()
-            : Operations.Where(operation => SelectedCategoryMapping == null ||
-                SelectedCategoryMapping.Matches(operation.OriginalCategory ?? operation.Category, operation.Title));
+        private System.Windows.Data.ListCollectionView _operationsView;
+        private object _operationsViewSource;
+        public System.ComponentModel.ICollectionView VisibleOperations
+        {
+            get
+            {
+                if (Operations == null) return null;
+                if (!ReferenceEquals(_operationsViewSource, Operations))
+                {
+                    _operationsViewSource = Operations;
+                    _operationsView = new System.Windows.Data.ListCollectionView(Operations);
+                    _operationsView.Filter = item => item is CardOperation operation &&
+                        (SelectedCategoryMapping == null || SelectedCategoryMapping.Matches(operation.SourceCategory, operation.Title));
+                    _operationsView.SortDescriptions.Add(new SortDescription(nameof(CardOperation.SourceCategory), ListSortDirection.Ascending));
+                }
+                return _operationsView;
+            }
+        }
+
+        private void RefreshOperationsView()
+        {
+            VisibleOperations?.Refresh();
+            NotifyOfPropertyChange(nameof(VisibleOperations));
+        }
+
+        public async Task SetTemporaryCategoryAsync(CardOperation operation)
+        {
+            if (operation == null) return;
+            var dialog = new TemporaryCategoryViewModel(operation.TemporaryCategory ?? operation.Category);
+            await _dialogService.ShowAsync(dialog);
+            if (!dialog.IsAccepted) return;
+            operation.TemporaryCategory = dialog.Category.Trim();
+            RefreshOperationsView();
+        }
+
+        public void ClearTemporaryCategory(CardOperation operation)
+        {
+            if (operation == null) return;
+            operation.TemporaryCategory = null;
+            ApplyCategoryScheme();
+        }
+
+        public void ClearAllTemporaryCategories()
+        {
+            var operations = Operations?.Where(o => o.HasTemporaryCategory).ToArray();
+            var count = operations?.Length ?? 0;
+            if (count == 0) return;
+            if (System.Windows.MessageBox.Show($"В проекте используется {count} временных категорий. Очистить все?",
+                "Очистка временных категорий", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
+                return;
+            foreach (var operation in operations) operation.TemporaryCategory = null;
+            ApplyCategoryScheme();
+        }
+
+        public CategoryMapping FindCategoryMapping(CardOperation operation)
+        {
+            if (operation == null) return null;
+            return ProjectMappings.Where(mapping => mapping.Matches(operation.SourceCategory, operation.Title))
+                .OrderBy(mapping => string.IsNullOrWhiteSpace(mapping.TitleContains) ? 0 :
+                    string.IsNullOrWhiteSpace(mapping.Source) ? 1 : 2)
+                .LastOrDefault();
+        }
+        public string CategoryFilterStatus => SelectedCategoryMapping == null
+            ? "Показаны все операции"
+            : "Показаны операции выбранного соответствия";
 
         public void ClearCategoryFilter() => SelectedCategoryMapping = null;
 
-        public async Task<CategoryMapping> AddCategoryMappingForOperation(CardOperation operation)
+        public void DeleteCategoryMapping(CategoryMapping mapping)
+        {
+            if (mapping == null)
+                return;
+            if (mapping.AddToScheme && _sharedMappings.TryGetValue(mapping, out var shared) && HasCategoryScheme)
+                SelectedCategoryScheme.Mappings.Remove(shared);
+            _sharedMappings.Remove(mapping);
+            ProjectMappings.Remove(mapping);
+        }
+
+        public Task<CategoryMapping> AddCategoryMappingForOperation(CardOperation operation)
         {
             if (operation == null)
-                return null;
-            if (!HasCategoryScheme)
-                await AddCategoryScheme();
-            if (!HasCategoryScheme)
-                return null;
+                return Task.FromResult<CategoryMapping>(null);
+
 
             var mapping = new CategoryMapping
             {
                 Source = operation.OriginalCategory ?? operation.Category,
                 TitleContains = operation.Title
             };
-            SelectedCategoryScheme.Mappings.Add(mapping);
+            ProjectMappings.Add(mapping);
             SelectedCategoryMapping = mapping;
-            return mapping;
+            return Task.FromResult(mapping);
         }
 
         public BindableCollection<CategoryScheme> CategorySchemes { get; } = new BindableCollection<CategoryScheme>();
@@ -69,14 +186,17 @@ namespace ParserApp
                 if (_selectedCategoryScheme == value)
                     return;
                 if (_selectedCategoryScheme != null)
-                    _selectedCategoryScheme.Mappings.CollectionChanged -= MappingsChanged;
+                    ProjectMappings.CollectionChanged -= MappingsChanged;
                 foreach (var mapping in _observedMappings)
                     mapping.PropertyChanged -= MappingChanged;
                 _observedMappings.Clear();
+                var localRules = ProjectMappings.Where(m => !m.AddToScheme).ToArray();
                 _selectedCategoryScheme = value;
                 ClearCategoryFilter();
                 if (value != null)
-                    value.Mappings.CollectionChanged += MappingsChanged;
+                    ProjectMappings.CollectionChanged += MappingsChanged;
+                ResetProjectMappings();
+                foreach (var localRule in localRules) ProjectMappings.Add(localRule);
                 ObserveMappings();
                 PopulateCategoryMappings();
                 ApplyCategoryScheme();
@@ -140,7 +260,7 @@ namespace ParserApp
 
         private void PopulateCategoryMappings()
         {
-            if (!HasCategoryScheme || Operations == null)
+            if (Operations == null)
                 return;
             var wasLoading = _loadingSchemes;
             _loadingSchemes = true;
@@ -149,8 +269,8 @@ namespace ParserApp
                 foreach (var category in Operations.Select(o => o.OriginalCategory ?? o.Category)
                     .Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(c => c))
                 {
-                    if (!SelectedCategoryScheme.Mappings.Any(m => string.Equals(m.Source?.Trim(), category.Trim(), StringComparison.OrdinalIgnoreCase)))
-                        SelectedCategoryScheme.Mappings.Add(new CategoryMapping { Source = category });
+                    if (!ProjectMappings.Any(m => string.Equals(m.Source?.Trim(), category.Trim(), StringComparison.OrdinalIgnoreCase)))
+                        ProjectMappings.Add(new CategoryMapping { Source = category });
                 }
             }
             finally { _loadingSchemes = wasLoading; }
@@ -159,7 +279,7 @@ namespace ParserApp
 
         private void ObserveMappings()
         {
-            var mappings = SelectedCategoryScheme?.Mappings;
+            var mappings = ProjectMappings;
             foreach (var removed in _observedMappings.Where(m => mappings == null || !mappings.Contains(m)).ToArray())
             {
                 removed.PropertyChanged -= MappingChanged;
@@ -174,8 +294,15 @@ namespace ParserApp
 
         private void MappingsChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            if (!_loadingSchemes && e.OldItems != null)
+                foreach (CategoryMapping removed in e.OldItems)
+                {
+                    if (removed.AddToScheme && HasCategoryScheme && _sharedMappings.TryGetValue(removed, out var shared))
+                        SelectedCategoryScheme.Mappings.Remove(shared);
+                    _sharedMappings.Remove(removed);
+                }
             ObserveMappings();
-            if (SelectedCategoryMapping != null && !SelectedCategoryScheme.Mappings.Contains(SelectedCategoryMapping))
+            if (SelectedCategoryMapping != null && !ProjectMappings.Contains(SelectedCategoryMapping))
                 ClearCategoryFilter();
             if (_loadingSchemes)
                 return;
@@ -184,6 +311,7 @@ namespace ParserApp
         }
         private void MappingChanged(object sender, PropertyChangedEventArgs e)
         {
+            if (sender is CategoryMapping mapping) SyncSharedMapping(mapping);
             ApplyCategoryScheme();
             SaveCategorySchemes();
         }
@@ -192,8 +320,8 @@ namespace ParserApp
             if (Operations == null)
                 return;
             foreach (var operation in Operations)
-                operation.ApplyCategoryScheme(HasCategoryScheme ? SelectedCategoryScheme : null, ShowOriginalCategories);
-            NotifyOfPropertyChange(nameof(VisibleOperations));
+                operation.ApplyCategoryScheme(new CategoryScheme { Mappings = ProjectMappings }, ShowOriginalCategories);
+            RefreshOperationsView();
         }
         private void SaveCategorySchemes()
         {

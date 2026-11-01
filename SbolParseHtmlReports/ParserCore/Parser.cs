@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace ParserCore
 {
-    public abstract class Parser
+    public abstract partial class Parser
     {
         protected string _path;
         protected readonly char _delimetr;

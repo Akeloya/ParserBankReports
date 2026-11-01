@@ -1,4 +1,4 @@
-﻿using Caliburn.Micro;
+using Caliburn.Micro;
 
 using ParserApp.Controls;
 using ParserApp.Services;
@@ -31,6 +31,7 @@ namespace ParserApp
             _dialogService = dialogService;
             DisplayName = Properties.Resources.MainWindowTitle;
             LoadCategorySchemes();
+            LoadRecentFiles();
         }
         public BindableCollection<CardOperation> Operations { get; set; }
         public string IncomeSummary => BuildSummary("Пополнение", _parser?.ReportIncome,
@@ -65,35 +66,7 @@ namespace ParserApp
             return _dialogService.ShowAsync(new EditSettingsViewModel());
         }
 
-        public async Task OpenHtmlFileAsync()
-        {
-
-            await _dialogService.OpenFileDialog("Выберите отчёт", "Отчеты СБОЛ", "*.html;*.pdf", async (fileName) =>
-            {
-                try
-                {
-                    var vm = new EnterCardNameViewModel();
-                    await _dialogService.ShowAsync(vm);
-                    if (!vm.IsAccepted)
-                        return;
-                    var parser = Parser.Get(fileName, App.GetSettingsPath(), ';');
-                    parser.RunParse(vm.CardName);
-                    _parser = parser;
-                    Operations = new BindableCollection<CardOperation>(parser.Operations);
-                    ClearCategoryFilter();
-                    PopulateCategoryMappings();
-                    ApplyCategoryScheme();
-                }
-                catch(Exception ex)
-                {
-                    await _dialogService.ShowErrorAsync(ex);
-                }
-                NotifyOfPropertyChange(nameof(Operations));
-                NotifyOfPropertyChange(nameof(IncomeSummary));
-                NotifyOfPropertyChange(nameof(ExpenseSummary));
-            });
-        }
-
+        public Task OpenHtmlFileAsync() => _dialogService.OpenFileDialog("Выберите отчёт", "Отчёты банков", "*.html;*.pdf", OpenReportPathAsync);
         public Task OpenCsvFileAsync()
         {
             return _dialogService.ShowPupupAsync("Не реализованно!");
@@ -103,16 +76,14 @@ namespace ParserApp
         public string SelectedExportEncoding { get; set; } = "Windows-1251";
         public Task SaveAsync()
         {
-            return _dialogService.OpenFileDialog(null, "(CSV)", "*.csv", (fileName) =>
+            return _dialogService.SaveFileDialog("Сохранить отчёт", "CSV (*.csv)|*.csv|Excel (*.xlsx)|*.xlsx", (filePath) =>
             {
-                var filePath = fileName;
-                if (!filePath.EndsWith(".csv", System.StringComparison.InvariantCultureIgnoreCase))
-                    filePath += ".csv";
+                var xlsx = string.Equals(Path.GetExtension(filePath), ".xlsx", StringComparison.OrdinalIgnoreCase);
                 var encoding = SelectedExportEncoding == "UTF-8"
                     ? new UTF8Encoding(true)
                     : Encoding.GetEncoding(1251);
                 ApplyCategoryScheme();
-                return _parser.SaveAsync(filePath, encoding);
+                return xlsx ? _parser.SaveXlsxAsync(filePath) : _parser.SaveAsync(filePath, encoding);
             });
         }
 

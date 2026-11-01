@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="System.IO.Compression" />
     <PackageReference Include="Microsoft.NET.Test.Sdk"/>
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />

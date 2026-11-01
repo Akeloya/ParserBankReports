@@ -1,0 +1,16 @@
+<UserControl x:Class="ParserApp.Controls.TemporaryCategoryView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:cal="http://caliburnmicro.com" Width="380"
+    FocusManager.FocusedElement="{Binding ElementName=Category}">
+    <StackPanel Margin="12">
+        <TextBlock Text="Категория или счёт для выбранной операции" TextWrapping="Wrap" Margin="0,0,0,6" />
+        <TextBox x:Name="Category" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock Text="Сохраняется только в проекте и экспорте. В схему соответствий не добавляется."
+                   TextWrapping="Wrap" Margin="0,8" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button cal:Message.Attach="Apply" Content="ОК" IsDefault="True" MinWidth="70" Margin="4" />
+            <Button cal:Message.Attach="Cancel" Content="Отмена" IsCancel="True" MinWidth="70" Margin="4" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>
