@@ -75,6 +75,7 @@ namespace ParserApp
             get => _selectedCategoryMapping;
             set
             {
+                if (ReferenceEquals(_selectedCategoryMapping, value)) return;
                 _selectedCategoryMapping = value;
                 NotifyOfPropertyChange();
                 RefreshOperationsView();

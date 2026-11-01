@@ -145,7 +145,7 @@ namespace ParserApp
 
         public Task HelpAsync()
         {
-            return Task.Run(() => Process.Start("https://github.com/Akeloya/SberParseHtmlReports/issues"));
+            return Task.Run(() => Process.Start("https://github.com/Akeloya/ParserBankReports/issues"));
         }
     }
 }

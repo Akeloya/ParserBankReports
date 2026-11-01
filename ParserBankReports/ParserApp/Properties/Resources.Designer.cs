@@ -171,7 +171,7 @@ namespace ParserApp.Properties {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на SBOL html reports parser app.
+        ///   Ищет локализованную строку, похожую на Bank reports parser.
         /// </summary>
         public static string MainWindowTitle {
             get {

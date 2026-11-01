@@ -17,7 +17,7 @@ namespace ParserApp
         private string _projectPath;
         public BindableCollection<string> RecentReports { get; } = new BindableCollection<string>();
         public BindableCollection<string> RecentProjects { get; } = new BindableCollection<string>();
-        private static string HistoryPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SberParseHtmlReports", "recent-files.json");
+        private static string HistoryPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ParserBankReports", "recent-files.json");
 
         private void LoadRecentFiles()
         {
@@ -55,32 +55,38 @@ namespace ParserApp
             if (answer == MessageBoxResult.Cancel) return false;
             if (answer == MessageBoxResult.No) return true;
             var saved = false;
-            await SaveProjectToDialog(() => saved = true);
+            await SaveProject(() => saved = true);
             return saved;
         }
 
         public override Task<bool> CanCloseAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) => ConfirmReplaceProject();
 
-        public Task SaveProjectAsync() => SaveProjectToDialog();
-        private Task SaveProjectToDialog(System.Action saved = null)
+        public Task SaveProjectAsync() => SaveProject();
+        private Task SaveProject(System.Action saved = null)
         {
             if (_parser == null) return Task.CompletedTask;
-            return _dialogService.SaveFileDialog("Сохранить проект обработки", "Проект обработки (*.json)|*.json", async path =>
+            if (!string.IsNullOrWhiteSpace(_projectPath))
+                return SaveProjectPathAsync(_projectPath, saved);
+            return _dialogService.SaveFileDialog("Сохранить проект обработки", "Проект обработки (*.json)|*.json",
+                path => SaveProjectPathAsync(path, saved));
+        }
+
+        private async Task SaveProjectPathAsync(string path, System.Action saved)
+        {
+            try
             {
-                try
-                {
-                    ApplyCategoryScheme();
-                    new ImportProject { ReportPath = _reportPath, SchemeName = HasCategoryScheme ? SelectedCategoryScheme.Name : null,
-                        ExportEncoding = SelectedExportEncoding, ShowOriginalCategories = ShowOriginalCategories,
-                        ReportIncome = _parser.ReportIncome, ReportExpense = _parser.ReportExpense,
-                        Operations = _parser.Operations.ToList(), Mappings = ProjectMappings.ToList() }.Save(path);
-                    _projectPath = path;
-                    DisplayName = "Проект: " + Path.GetFileName(path);
-                    RememberFile(path, RecentProjects);
-                    saved?.Invoke();
-                }
-                catch (Exception ex) { await _dialogService.ShowErrorAsync(ex); }
-            });
+                path = Path.GetFullPath(path);
+                ApplyCategoryScheme();
+                new ImportProject { ReportPath = _reportPath, SchemeName = HasCategoryScheme ? SelectedCategoryScheme.Name : null,
+                    ExportEncoding = SelectedExportEncoding, ShowOriginalCategories = ShowOriginalCategories,
+                    ReportIncome = _parser.ReportIncome, ReportExpense = _parser.ReportExpense,
+                    Operations = _parser.Operations.ToList(), Mappings = ProjectMappings.ToList() }.Save(path);
+                _projectPath = path;
+                DisplayName = "Проект: " + Path.GetFileName(path);
+                RememberFile(path, RecentProjects);
+                saved?.Invoke();
+            }
+            catch (Exception ex) { await _dialogService.ShowErrorAsync(ex); }
         }
 
         public Task OpenProjectAsync() => _dialogService.OpenFileDialog("Открыть проект обработки", "Проект обработки", "*.json", OpenProjectPathAsync);
@@ -89,6 +95,7 @@ namespace ParserApp
         {
             try
             {
+                path = Path.GetFullPath(path);
                 var project = ImportProject.Load(path);
                 if (!await ConfirmReplaceProject()) return;
                 _parser = new ProjectParser(project);

@@ -59,7 +59,7 @@ namespace ParserCore
             var temporaryPath = jsonPath + ".tmp";
             File.WriteAllText(temporaryPath, json);
             if (File.Exists(jsonPath))
-                File.Replace(temporaryPath, jsonPath, null);
+                File.Replace(temporaryPath, jsonPath, jsonPath + ".bak");
             else
                 File.Move(temporaryPath, jsonPath);
         }

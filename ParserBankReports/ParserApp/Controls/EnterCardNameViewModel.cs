@@ -11,7 +11,7 @@ namespace ParserApp.Controls
     {
         private readonly string _historyPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SberParseHtmlReports", "card-names.json");
+            "ParserBankReports", "card-names.json");
         private string _cardName;
         private string _errorMessage;
 

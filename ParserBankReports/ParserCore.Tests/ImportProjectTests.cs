@@ -13,9 +13,9 @@ namespace ParserCore.Tests
             var path = Path.GetTempFileName();
             try
             {
-                var operation = new CardOperation { RowNumber = 1, Category = "SBOL", Title = "Перевод Ивану", Summ = -250.50m,
+                var operation = new CardOperation { RowNumber = 1, Category = "Bank", Title = "Перевод Ивану", Summ = -250.50m,
                     Date = new DateTime(2026, 10, 31, 15, 20, 0), CardName = "Карта" };
-                var local = new CategoryMapping { Source = "SBOL", TitleContains = "Ивану", Target = "Оплата", AddToScheme = false };
+                var local = new CategoryMapping { Source = "Bank", TitleContains = "Ивану", Target = "Оплата", AddToScheme = false };
                 var scheme = new CategoryScheme();
                 scheme.Mappings.Add(local);
                 operation.ApplyCategoryScheme(scheme);
@@ -25,14 +25,14 @@ namespace ParserCore.Tests
                 project.Save(path);
                 var restored = ImportProject.Load(path);
                 var parser = new ProjectParser(restored);
-                Assert.Equal("SBOL", parser.Operations.Single().OriginalCategory);
+                Assert.Equal("Bank", parser.Operations.Single().OriginalCategory);
                 Assert.Equal("Оплата", parser.Operations.Single().Category);
                 Assert.Equal(operation.Date, parser.Operations.Single().Date);
                 Assert.Equal(-250.50m, parser.Operations.Single().Summ);
                 Assert.Equal(250.50m, parser.ReportExpense);
                 Assert.False(restored.Mappings.Single().AddToScheme);
                 parser.Operations.Single().ApplyCategoryScheme(null);
-                Assert.Equal("SBOL", parser.Operations.Single().Category);
+                Assert.Equal("Bank", parser.Operations.Single().Category);
             }
             finally { File.Delete(path); }
         }
@@ -45,8 +45,8 @@ namespace ParserCore.Tests
             var xlsx = Path.GetTempFileName();
             try
             {
-                var first = new CardOperation { Category = "Перевод на карту", Title = "SBOL" };
-                var second = new CardOperation { Category = "Перевод на карту", Title = "SBOL" };
+                var first = new CardOperation { Category = "Перевод на карту", Title = "Bank" };
+                var second = new CardOperation { Category = "Перевод на карту", Title = "Bank" };
                 var scheme = new CategoryScheme();
                 scheme.Mappings.Add(new CategoryMapping { Source = "Перевод на карту", Target = "Пополнение" });
                 first.ApplyCategoryScheme(scheme);

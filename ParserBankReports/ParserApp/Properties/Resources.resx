@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -155,7 +155,7 @@
     <value>..\Resources\LICENSE;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="MainWindowTitle" xml:space="preserve">
-    <value>SBOL html reports parser app</value>
+    <value>Bank reports parser</value>
   </data>
   <data name="MenuItemAbout" xml:space="preserve">
     <value>About</value>

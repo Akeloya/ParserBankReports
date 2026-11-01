@@ -12,6 +12,8 @@
     d:DesignHeight="450"
     d:DesignWidth="800"
     PreviewKeyDown="View_OnPreviewKeyDown"
+    PreviewMouseDown="CategoryMappings_OnPreviewMouseDown"
+    PreviewMouseUp="CategoryMappings_OnPreviewMouseUp"
     mc:Ignorable="d">
     <UserControl.Resources>
         <cnv:NumberSignConverter x:Key="SignConverter" />
@@ -119,12 +121,12 @@
                     CanUserAddRows="True"
                     CanUserDeleteRows="True"
                     CanUserSortColumns="True"
-                    IsEnabled="{Binding HasCategoryScheme}"
-                    ItemsSource="{Binding SelectedCategoryScheme.Mappings}"
-                    PreviewMouseRightButtonDown="CategoryMappings_OnRightButtonDown"
+                    ItemsSource="{Binding ProjectMappings}"
+                    IsSynchronizedWithCurrentItem="False"
+                    SelectionChanged="CategoryMappings_OnSelectionChanged"
                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                    SelectedItem="{Binding SelectedCategoryMapping, Mode=TwoWay}"
+                    SelectedItem="{Binding SelectedCategoryMapping, Mode=OneWay}"
                     SelectionMode="Single"
                     SelectionUnit="FullRow">
                     <DataGrid.Columns>

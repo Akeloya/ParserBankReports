@@ -64,7 +64,25 @@ namespace ParserApp
             e.Handled = true;
             var mapping = viewModel.FindCategoryMapping(operation);
             if (mapping != null)
-                CategoryMappingsGrid.ScrollIntoView(mapping, CategoryMappingsGrid.Columns[1]);
+                FocusCategoryMapping(mapping, false);
+        }
+
+        private void FocusCategoryMapping(ParserCore.CategoryMapping mapping, bool edit)
+        {
+            if (!CategoryMappingsGrid.CommitEdit(DataGridEditingUnit.Cell, true) ||
+                !CategoryMappingsGrid.CommitEdit(DataGridEditingUnit.Row, true))
+                return;
+            var column = CategoryMappingsGrid.Columns[edit ? 3 : 1];
+            CategoryMappingsGrid.SelectedItem = mapping;
+            CategoryMappingsGrid.ScrollIntoView(mapping, column);
+            CategoryMappingsGrid.UpdateLayout();
+            CategoryMappingsGrid.CurrentCell = new DataGridCellInfo(mapping, column);
+            CategoryMappingsGrid.Focus();
+            var row = CategoryMappingsGrid.ItemContainerGenerator.ContainerFromItem(mapping) as DataGridRow;
+            var content = row == null ? null : column.GetCellContent(row);
+            FindAncestor<DataGridCell>(content)?.Focus();
+            if (edit)
+                CategoryMappingsGrid.BeginEdit();
         }
 
         private void Operations_OnLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -112,10 +130,7 @@ namespace ParserApp
                 var mapping = await viewModel.AddCategoryMappingForOperation(operation);
                 if (mapping == null)
                     return;
-                CategoryMappingsGrid.ScrollIntoView(mapping);
-                CategoryMappingsGrid.CurrentCell = new DataGridCellInfo(mapping, CategoryMappingsGrid.Columns[3]);
-                CategoryMappingsGrid.Focus();
-                CategoryMappingsGrid.BeginEdit();
+                FocusCategoryMapping(mapping, true);
             };
             menu.Items.Add(add);
             menu.Items.Add(new Separator());
@@ -128,10 +143,36 @@ namespace ParserApp
             menu.IsOpen = true;
         }
 
-        private void CategoryMappings_OnRightButtonDown(object sender, MouseButtonEventArgs e)
+        private bool _resettingMappingSelection;
+
+        private void CategoryMappings_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (e.OriginalSource != CategoryMappingsGrid || _resettingMappingSelection ||
+                Mouse.RightButton == MouseButtonState.Pressed) return;
+            if (DataContext is MainWindowViewModel viewModel)
+                viewModel.SelectedCategoryMapping = CategoryMappingsGrid.SelectedItem as ParserCore.CategoryMapping;
+        }
+
+        private void CategoryMappings_OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left) _resettingMappingSelection = false;
+            if (e.ChangedButton != MouseButton.Right ||
+                FindAncestor<DataGrid>(e.OriginalSource as DependencyObject) != CategoryMappingsGrid) return;
+            // Intercept at the view, before DataGrid class handlers can focus another row.
             e.Handled = true;
+            _resettingMappingSelection = true;
             ClearCategoryFilter_OnClick(sender, e);
+        }
+
+        private void CategoryMappings_OnPreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Right || !_resettingMappingSelection) return;
+            e.Handled = true;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle, new Action(() =>
+            {
+                try { ClearCategoryFilter_OnClick(sender, e); }
+                finally { _resettingMappingSelection = false; }
+            }));
         }
 
         private void DeleteCategoryMapping_OnClick(object sender, RoutedEventArgs e)
@@ -153,6 +194,7 @@ namespace ParserApp
             if (!CategoryMappingsGrid.CommitEdit(DataGridEditingUnit.Cell, true) ||
                 !CategoryMappingsGrid.CommitEdit(DataGridEditingUnit.Row, true))
                 return;
+            CategoryMappingsGrid.CurrentCell = new DataGridCellInfo();
             CategoryMappingsGrid.UnselectAll();
             viewModel.ClearCategoryFilter();
         }

@@ -10,6 +10,31 @@ namespace ParserCore.Tests
     public class CategorySchemeTests
     {
         [Fact]
+        public void SavingSettingsKeepsPreviousSchemesInBackup()
+        {
+            var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+            try
+            {
+                var settings = DataSet.LoadDefault();
+                settings.CategorySchemes.Add(new CategoryScheme { Name = "Семья" });
+                settings.SelectedCategoryScheme = "Семья";
+                settings.Save(path);
+                settings.CategorySchemes.Clear();
+                settings.SelectedCategoryScheme = null;
+                settings.Save(path);
+                Assert.Empty(DataSet.LoadSettings(path).CategorySchemes);
+                var backup = DataSet.LoadSettings(path + ".bak");
+                Assert.Equal("Семья", backup.CategorySchemes.Single().Name);
+                Assert.Equal("Семья", backup.SelectedCategoryScheme);
+            }
+            finally
+            {
+                File.Delete(path);
+                File.Delete(path + ".bak");
+            }
+        }
+
+        [Fact]
         public void TitleRulesSplitCategoriesAndOverrideIncorrectBankCategories()
         {
             var scheme = new CategoryScheme();
