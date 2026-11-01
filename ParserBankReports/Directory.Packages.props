@@ -1,25 +1,24 @@
 <Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
   <ItemGroup Label="nuget">
-    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="coverlet.collector" Version="6.0.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Caliburn.Micro" version="5.0.258" />
-    <PackageReference Include="Caliburn.Micro.Core" version="5.0.258" />
-    <PackageReference Include="Microsoft.WindowsAPICodePack-Core" version="1.1.0.2" />
-    <PackageReference Include="Microsoft.WindowsAPICodePack-Shell" version="1.1.0.0" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" version="1.1.135" />
-    <PackageReference Include="Ninject" version="3.3.6" />
-    <PackageReference Include="System.Runtime.Serialization.Primitives" version="4.3.0" />
-    <PackageReference Include="WpfExtendedControls" version="1.0.4" />
-    <PackageReference Include="itext" Version="9.5.0" />
+    <PackageVersion Include="HtmlAgilityPack" Version="1.13.1" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <PackageVersion Include="Caliburn.Micro" Version="5.0.258" />
+    <PackageVersion Include="Caliburn.Micro.Core" Version="5.0.258" />
+    <PackageVersion Include="Microsoft.WindowsAPICodePack-Core" Version="1.1.0.2" />
+    <PackageVersion Include="Microsoft.WindowsAPICodePack-Shell" Version="1.1.0.0" />
+    <PackageVersion Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.161" />
+    <PackageVersion Include="Ninject" Version="3.3.6" />
+    <PackageVersion Include="System.Runtime.Serialization.Primitives" Version="4.3.0" />
+    <PackageVersion Include="WpfExtendedControls" Version="1.0.4" />
+    <PackageVersion Include="itext" Version="9.8.0" />
+    <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageVersion Include="System.Resources.Extensions" Version="8.0.0" />
   </ItemGroup>
 </Project>

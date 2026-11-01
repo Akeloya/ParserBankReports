@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -7,6 +7,7 @@
 	  <UseWPF>true</UseWPF>
     <TargetFramework>net48</TargetFramework>        
     <Prefer32Bit>false</Prefer32Bit>
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>Credit_Card.ico</ApplicationIcon>
@@ -20,15 +21,18 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-	<PackageReference Include="Caliburn.Micro" />
-	<PackageReference Include="Caliburn.Micro.Core" />
-	<PackageReference Include="HtmlAgilityPack" />
-	<PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-	<PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
-	<PackageReference Include="Newtonsoft.Json" />
-	<PackageReference Include="Ninject" />
-	<PackageReference Include="System.Runtime.Serialization.Primitives" />
-	<PackageReference Include="WpfExtendedControls" />
+    <PackageReference Include="Caliburn.Micro" />
+    <PackageReference Include="Caliburn.Micro.Core" />
+    <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="Microsoft.CSharp" />
+    <PackageReference Include="Microsoft.WindowsAPICodePack-Core" />
+    <PackageReference Include="Microsoft.WindowsAPICodePack-Shell" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="Ninject" />
+    <PackageReference Include="System.Runtime.Serialization.Primitives" />
+    <PackageReference Include="System.Resources.Extensions" />
+    <PackageReference Include="WpfExtendedControls" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
