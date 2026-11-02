@@ -229,7 +229,7 @@ namespace ParserApp
             CategorySchemes.Add(_noScheme);
             try
             {
-                var settings = File.Exists(App.GetSettingsPath()) ? DataSet.LoadSettings(App.GetSettingsPath()) : DataSet.LoadDefault();
+                var settings = _settingsService.LoadSettings();
                 foreach (var scheme in settings.CategorySchemes ?? new List<CategoryScheme>())
                 {
                     if (scheme == null || string.IsNullOrWhiteSpace(scheme.Name))
@@ -330,11 +330,10 @@ namespace ParserApp
                 return;
             try
             {
-                var path = App.GetSettingsPath();
-                var settings = File.Exists(path) ? DataSet.LoadSettings(path) : DataSet.LoadDefault();
+                var settings = _settingsService.LoadSettings();
                 settings.CategorySchemes = CategorySchemes.Where(s => s != _noScheme).ToList();
                 settings.SelectedCategoryScheme = HasCategoryScheme ? SelectedCategoryScheme.Name : null;
-                settings.Save(path);
+                _settingsService.SaveSettings(settings);
                 SchemeError = null;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException)

@@ -1,33 +1,26 @@
-﻿using Caliburn.Micro;
+using Caliburn.Micro;
 
 using ParserApp.Properties;
 
 using ParserCore;
 
-using System.IO;
+using ParserCore.Services;
 using System.Threading.Tasks;
 
 namespace ParserApp.Controls
 {
     public class EditSettingsViewModel : Screen
     {
-        private readonly string _settingsPath;
-        public EditSettingsViewModel()
+        private readonly IApplicationSettingsService _settingsService;
+        public EditSettingsViewModel(IApplicationSettingsService settingsService)
         {
-            _settingsPath = App.GetSettingsPath();
+            _settingsService = settingsService;
             DisplayName = Resources.WndTitleEditSettings;
         }
 
         protected override void OnViewLoaded(object view)
         {
-            try
-            {
-                Data = DataSet.LoadSettings(_settingsPath);
-            }
-            catch (FileNotFoundException)
-            {
-                Data = DataSet.LoadDefault();
-            }
+            Data = _settingsService.LoadSettings();
             base.OnViewLoaded(view);
         }
 
@@ -41,13 +34,11 @@ namespace ParserApp.Controls
         public Task SaveAsync()
         {
             // Schemes may have changed in the main window since this editor was opened.
-            if (File.Exists(_settingsPath))
-            {
-                var current = DataSet.LoadSettings(_settingsPath);
-                Data.CategorySchemes = current.CategorySchemes;
-                Data.SelectedCategoryScheme = current.SelectedCategoryScheme;
-            }
-            return Data.SaveAsync(_settingsPath);
+            var current = _settingsService.LoadSettings();
+            Data.CategorySchemes = current.CategorySchemes;
+            Data.SelectedCategoryScheme = current.SelectedCategoryScheme;
+            _settingsService.SaveSettings(Data);
+            return Task.CompletedTask;
         }
     }
 }

@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Caliburn.Micro;
 using Ninject;
 
 using ParserApp.Services;
+using ParserCore.Services;
 
 namespace ParserApp
 {
@@ -20,6 +21,8 @@ namespace ParserApp
             base.Configure();
             _kernel.Rebind<IWindowManager>().To<WindowManager>().InSingletonScope();
             _kernel.Bind<MainWindowViewModel>().ToSelf().InSingletonScope();
+            _kernel.Bind<IApplicationPaths>().To<ApplicationPaths>().InSingletonScope();
+            _kernel.Bind<IApplicationSettingsService>().To<ApplicationSettingsService>().InSingletonScope();
             _kernel.Bind<IDialogService>().To<DialogService>().InSingletonScope();
         }
 

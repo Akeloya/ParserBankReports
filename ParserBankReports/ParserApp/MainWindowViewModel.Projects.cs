@@ -1,5 +1,6 @@
 using Caliburn.Micro;
 using Newtonsoft.Json;
+using ParserCore.Services;
 using ParserApp.Controls;
 using ParserCore;
 using System;
@@ -17,14 +18,12 @@ namespace ParserApp
         private string _projectPath;
         public BindableCollection<string> RecentReports { get; } = new BindableCollection<string>();
         public BindableCollection<string> RecentProjects { get; } = new BindableCollection<string>();
-        private static string HistoryPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ParserBankReports", "recent-files.json");
 
         private void LoadRecentFiles()
         {
             try
             {
-                if (!File.Exists(HistoryPath)) return;
-                var history = JsonConvert.DeserializeObject<RecentFileHistory>(File.ReadAllText(HistoryPath));
+                var history = _settingsService.LoadRecentFiles();
                 RecentReports.AddRange((history?.Reports ?? new List<string>()).Where(p => !string.IsNullOrWhiteSpace(p)).Take(10));
                 RecentProjects.AddRange((history?.Projects ?? new List<string>()).Where(p => !string.IsNullOrWhiteSpace(p)).Take(10));
             }
@@ -40,9 +39,8 @@ namespace ParserApp
             while (list.Count > 10) list.RemoveAt(list.Count - 1);
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(HistoryPath));
-                File.WriteAllText(HistoryPath, JsonConvert.SerializeObject(new RecentFileHistory
-                { Reports = RecentReports.ToList(), Projects = RecentProjects.ToList() }, Formatting.Indented));
+                _settingsService.SaveRecentFiles(new RecentFileHistory
+                { Reports = RecentReports.ToList(), Projects = RecentProjects.ToList() });
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             { SchemeError = "Не удалось сохранить последние файлы: " + ex.Message; }
@@ -119,10 +117,10 @@ namespace ParserApp
             {
                 if (!File.Exists(path)) throw new FileNotFoundException("Отчёт не найден.", path);
                 if (!await ConfirmReplaceProject()) return;
-                var vm = new EnterCardNameViewModel();
+                var vm = new EnterCardNameViewModel(_settingsService);
                 await _dialogService.ShowAsync(vm);
                 if (!vm.IsAccepted) return;
-                var parser = ParserCore.Parser.Get(path, App.GetSettingsPath(), ';');
+                var parser = ParserCore.Parser.Get(path, _settingsService.LoadSettings(), ';');
                 parser.RunParse(vm.CardName);
                 _parser = parser;
                 Operations = new BindableCollection<CardOperation>(parser.Operations);
@@ -148,9 +146,4 @@ namespace ParserApp
         }
     }
 
-    public class RecentFileHistory
-    {
-        public List<string> Reports { get; set; } = new List<string>();
-        public List<string> Projects { get; set; } = new List<string>();
-    }
 }

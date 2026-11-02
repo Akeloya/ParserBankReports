@@ -2,6 +2,7 @@ using Caliburn.Micro;
 
 using ParserApp.Controls;
 using ParserApp.Services;
+using ParserCore.Services;
 
 using ParserCore;
 
@@ -26,9 +27,11 @@ namespace ParserApp
     {
         private Parser _parser;
         private readonly IDialogService _dialogService;
-        public MainWindowViewModel(IDialogService dialogService)
+        private readonly IApplicationSettingsService _settingsService;
+        public MainWindowViewModel(IDialogService dialogService, IApplicationSettingsService settingsService)
         {
             _dialogService = dialogService;
+            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             DisplayName = Properties.Resources.MainWindowTitle;
             LoadCategorySchemes();
             LoadRecentFiles();
@@ -63,7 +66,7 @@ namespace ParserApp
 
         public Task OpenSettingsAsync()
         {
-            return _dialogService.ShowAsync(new EditSettingsViewModel());
+            return _dialogService.ShowAsync(new EditSettingsViewModel(_settingsService));
         }
 
         public Task OpenHtmlFileAsync() => _dialogService.OpenFileDialog("Выберите отчёт", "Отчёты банков", "*.html;*.pdf", OpenReportPathAsync);

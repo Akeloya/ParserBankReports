@@ -2,6 +2,7 @@ using Caliburn.Micro;
 using Newtonsoft.Json;
 using System;
 using System.IO;
+using ParserCore.Services;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -9,26 +10,22 @@ namespace ParserApp.Controls
 {
     internal class EnterCardNameViewModel : Screen
     {
-        private readonly string _historyPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ParserBankReports", "card-names.json");
+        private readonly IApplicationSettingsService _settingsService;
         private string _cardName;
         private string _errorMessage;
 
-        public EnterCardNameViewModel()
+        public EnterCardNameViewModel(IApplicationSettingsService settingsService)
         {
+            _settingsService = settingsService;
             DisplayName = Properties.Resources.Card;
             try
             {
-                if (File.Exists(_historyPath))
-                {
-                    var names = JsonConvert.DeserializeObject<string[]>(File.ReadAllText(_historyPath));
-                    CardNames.AddRange((names ?? new string[0])
-                        .Where(name => !string.IsNullOrWhiteSpace(name))
-                        .Select(name => name.Trim())
-                        .Distinct(StringComparer.CurrentCultureIgnoreCase)
-                        .OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase));
-                }
+                var names = _settingsService.LoadCardNames();
+                CardNames.AddRange((names ?? new string[0])
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Select(name => name.Trim())
+                    .Distinct(StringComparer.CurrentCultureIgnoreCase)
+                    .OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase));
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException)
             {
@@ -70,13 +67,7 @@ namespace ParserApp.Controls
                 var names = CardNames.Concat(new[] { CardName })
                     .Distinct(StringComparer.CurrentCultureIgnoreCase)
                     .OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase);
-                Directory.CreateDirectory(Path.GetDirectoryName(_historyPath));
-                var temporaryPath = _historyPath + ".tmp";
-                File.WriteAllText(temporaryPath, JsonConvert.SerializeObject(names, Formatting.Indented));
-                if (File.Exists(_historyPath))
-                    File.Replace(temporaryPath, _historyPath, null);
-                else
-                    File.Move(temporaryPath, _historyPath);
+                _settingsService.SaveCardNames(names);
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
